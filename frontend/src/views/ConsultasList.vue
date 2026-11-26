@@ -1,7 +1,9 @@
 <template>
   <div>
     <h2>Consultas</h2>
-    <table v-if="consultas.length">
+    <p v-if="cargando">Cargando...</p>
+    <p v-else-if="error" class="error">{{ error }}</p>
+    <table v-else-if="consultas.length">
       <thead>
         <tr>
           <th>#</th>
@@ -27,9 +29,15 @@
             <span :class="['badge', `badge-${consulta.estado?.toLowerCase()}`]">{{ consulta.estado }}</span>
           </td>
           <td>{{ consulta.motivo }}</td>
-          <td>
+          <td class="acciones">
             <router-link :to="`/consultas/${consulta.id}`">Ver</router-link>
-            <button class="btn-danger" style="margin-left: 8px" @click="cancelar(consulta.id)">Cancelar</button>
+            <button
+              v-if="esActiva(consulta)"
+              class="btn-danger"
+              style="margin-left: 8px"
+              :disabled="procesando === consulta.id"
+              @click="cancelar(consulta)"
+            >Cancelar</button>
           </td>
         </tr>
       </tbody>
@@ -39,29 +47,43 @@
 </template>
 
 <script>
-import { consultasApi } from '../services/api'
+import { consultasApi, mensajeDeError } from '../services/api'
+import { esActiva, formatFecha } from '../utils/consultas'
 
 export default {
   name: 'ConsultasList',
   data() {
     return {
-      consultas: []
+      consultas: [],
+      cargando: true,
+      error: null,
+      procesando: null
     }
   },
   async mounted() {
     try {
       const res = await consultasApi.getAll()
       this.consultas = res.data
-    } catch {
-      alert('Error al procesar la solicitud')
+    } catch (e) {
+      this.error = mensajeDeError(e)
+    } finally {
+      this.cargando = false
     }
   },
   methods: {
-    formatFecha(fecha) {
-      return new Date(fecha).toLocaleString('es-AR')
-    },
-    async cancelar(id) {
-      await consultasApi.cancelar(id)
+    esActiva,
+    formatFecha,
+    async cancelar(consulta) {
+      if (!confirm(`¿Cancelar la consulta #${consulta.id}?`)) return
+      this.procesando = consulta.id
+      try {
+        const res = await consultasApi.cancelar(consulta.id)
+        Object.assign(consulta, res.data)
+      } catch (e) {
+        alert(mensajeDeError(e))
+      } finally {
+        this.procesando = null
+      }
     }
   }
 }
@@ -79,4 +101,5 @@ export default {
 .badge-cancelado    { background: #f8d7da; color: #721c24; }
 .badge-atendido     { background: #d1ecf1; color: #0c5460; }
 .badge-inasistencia { background: #e2e3e5; color: #383d41; }
+.acciones { white-space: nowrap; }
 </style>

@@ -14,6 +14,10 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Afiliado>()
+            .HasIndex(a => a.DNI)
+            .IsUnique();
+
         modelBuilder.Entity<Consulta>()
             .Property(c => c.Estado)
             .HasConversion<string>();
@@ -22,10 +26,12 @@ public class AppDbContext : DbContext
             .Property(c => c.Modalidad)
             .HasConversion<string>();
 
+        // Restrict en lugar de SetNull: borrar un afiliado no debe dejar consultas huérfanas
+        // ni perder el historial. Los afiliados se dan de baja de forma lógica (isActive).
         modelBuilder.Entity<Consulta>()
             .HasOne(c => c.Afiliado)
             .WithMany()
             .HasForeignKey(c => c.AfiliadoId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

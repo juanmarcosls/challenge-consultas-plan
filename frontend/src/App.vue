@@ -83,6 +83,8 @@ button {
   color: #fff;
 }
 button:hover { background: #1558b0; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+.error { color: #d32f2f; font-size: 14px; }
 .btn-danger { background: #d32f2f; }
 .btn-danger:hover { background: #b71c1c; }
 .form-group {
