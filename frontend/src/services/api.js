@@ -35,7 +35,9 @@ export const afiliadosApi = {
   getById: (id)       => http.get(`/afiliados/${id}`),
   create:  (data)     => http.post('/afiliados', data),
   update:  (id, data) => http.put(`/afiliados/${id}`, data),
-  delete:  (id)       => http.delete(`/afiliados/${id}`)
+  delete:  (id)       => http.delete(`/afiliados/${id}`),
+  getCupoNutricion:   (id, anio) => http.get(`/afiliados/${id}/cupo-nutricion`, { params: { anio } }),
+  getCuposNutricion:  (anio)     => http.get('/afiliados/cupo-nutricion', { params: { anio } })
 }
 
 export const profesionalesApi = {

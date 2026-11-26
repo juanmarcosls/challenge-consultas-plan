@@ -15,3 +15,12 @@ export function ahoraParaInput() {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
   return d.toISOString().slice(0, 16)
 }
+
+const normalizar = (texto) =>
+  (texto ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase()
+
+/** Misma regla que el backend: compara sin mayúsculas ni tildes. */
+export const esNutricion = (especialidad) => normalizar(especialidad) === 'NUTRICION'
+
+export const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+  'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']

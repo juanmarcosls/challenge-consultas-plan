@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ConsultasPlan.Data;
 using ConsultasPlan.Dtos;
 using ConsultasPlan.Models;
+using ConsultasPlan.Services;
 
 namespace ConsultasPlan.Controllers;
 
@@ -12,14 +13,18 @@ public class AfiliadosController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly TimeProvider _time;
+    private readonly CupoNutricionService _cupoNutricion;
 
-    public AfiliadosController(AppDbContext context, TimeProvider time)
+    public AfiliadosController(AppDbContext context, TimeProvider time, CupoNutricionService cupoNutricion)
     {
         _context = context;
         _time = time;
+        _cupoNutricion = cupoNutricion;
     }
 
     private DateTime Ahora => _time.GetLocalNow().DateTime;
+
+    private static bool AnioValido(int? anio) => anio is null or (>= 2000 and <= 2100);
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
@@ -36,6 +41,27 @@ public class AfiliadosController : ControllerBase
         var afiliado = await _context.Afiliados.FindAsync(id);
         if (afiliado == null || !afiliado.isActive) return NotFound();
         return Ok(afiliado);
+    }
+
+    /// <summary>Cupo de nutrición presencial de todos los afiliados activos para un año (por defecto, el actual).</summary>
+    [HttpGet("cupo-nutricion")]
+    public async Task<IActionResult> GetCuposNutricion([FromQuery] int? anio)
+    {
+        if (!AnioValido(anio)) return BadRequest(new { mensaje = "Año inválido." });
+        var resumenes = await _cupoNutricion.ObtenerResumenesAsync(anio ?? Ahora.Year);
+        return Ok(resumenes);
+    }
+
+    /// <summary>Cupo de nutrición presencial de un afiliado para un año (por defecto, el actual).</summary>
+    [HttpGet("{id}/cupo-nutricion")]
+    public async Task<IActionResult> GetCupoNutricion(int id, [FromQuery] int? anio)
+    {
+        if (!AnioValido(anio)) return BadRequest(new { mensaje = "Año inválido." });
+        var afiliado = await _context.Afiliados.FindAsync(id);
+        if (afiliado == null || !afiliado.isActive) return NotFound();
+
+        var resumen = await _cupoNutricion.ObtenerResumenAsync(id, anio ?? Ahora.Year);
+        return Ok(resumen);
     }
 
     [HttpPost]

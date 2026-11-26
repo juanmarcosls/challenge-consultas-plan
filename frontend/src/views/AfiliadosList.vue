@@ -12,7 +12,7 @@
           <th>Email</th>
           <th>Teléfono</th>
           <th>Plan</th>
-          <th>Consultas usadas</th>
+          <th>Nutrición {{ anio }}</th>
           <th>Bloqueado</th>
           <th>Acciones</th>
         </tr>
@@ -25,7 +25,10 @@
           <td>{{ a.email }}</td>
           <td>{{ a.telefono }}</td>
           <td>{{ a.plan }}</td>
-          <td>{{ a.consultasUsadas }}</td>
+          <td :title="'Consultas de nutrición presencial que consumen cupo en ' + anio">
+            <template v-if="cupos[a.id]">{{ cupos[a.id].usadas }} / {{ cupos[a.id].cupoAnual }}</template>
+            <template v-else>—</template>
+          </td>
           <td>
             <span v-if="a.bloqueado" style="color: #d32f2f; font-weight: 600">Sí</span>
             <span v-else style="color: #388e3c">No</span>
@@ -48,6 +51,8 @@ export default {
   data() {
     return {
       afiliados: [],
+      cupos: {},
+      anio: new Date().getFullYear(),
       cargando: true,
       error: null,
       procesando: null
@@ -57,6 +62,7 @@ export default {
     try {
       const res = await afiliadosApi.getAll()
       this.afiliados = res.data
+      this.cargarCupos()
     } catch (e) {
       this.error = mensajeDeError(e)
     } finally {
@@ -64,6 +70,14 @@ export default {
     }
   },
   methods: {
+    async cargarCupos() {
+      try {
+        const res = await afiliadosApi.getCuposNutricion(this.anio)
+        this.cupos = Object.fromEntries(res.data.map(c => [c.afiliadoId, c]))
+      } catch {
+        // El listado sigue siendo útil sin el cupo; la columna muestra "—".
+      }
+    },
     async eliminar(afiliado) {
       if (!confirm(`¿Dar de baja a ${afiliado.nombreCompleto}? Su historial de consultas se conserva.`)) return
       this.procesando = afiliado.id
