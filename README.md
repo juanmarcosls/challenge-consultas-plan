@@ -22,6 +22,14 @@ La base de datos SQLite (`consultas.db`) se crea automáticamente en la primera 
 
 **Swagger:** http://localhost:5000/swagger
 
+> Si ya tenías un `consultas.db` de una versión anterior, borralo antes de correr: la base se crea con `EnsureCreated`, que no actualiza el esquema de una base existente.
+
+### Tests
+
+```bash
+dotnet test backend/ConsultasPlan.sln
+```
+
 ---
 
 ## Frontend
@@ -34,6 +42,8 @@ npm run dev
 
 El cliente levanta en **http://localhost:5173**.
 
+La URL de la API se puede configurar con la variable `VITE_API_URL` (ver `frontend/.env.example`). Por defecto usa `http://localhost:5000`.
+
 ---
 
 ## Estructura del proyecto
@@ -41,5 +51,6 @@ El cliente levanta en **http://localhost:5173**.
 ```
 /
 ├── backend/     # API REST (.NET 8 · EF Core · SQLite)
-└── frontend/    # SPA (Vue 3 · Vite)
+├── frontend/    # SPA (Vue 3 · Vite)
+└── tests/       # Tests unitarios del backend (xUnit)
 ```

@@ -1,7 +1,9 @@
 <template>
   <div>
     <h2>Afiliados</h2>
-    <table v-if="afiliados.length">
+    <p v-if="cargando">Cargando...</p>
+    <p v-else-if="error" class="error">{{ error }}</p>
+    <table v-else-if="afiliados.length">
       <thead>
         <tr>
           <th>#</th>
@@ -29,7 +31,7 @@
             <span v-else style="color: #388e3c">No</span>
           </td>
           <td>
-            <button class="btn-danger" @click="eliminar(a.id)">Eliminar</button>
+            <button class="btn-danger" :disabled="procesando === a.id" @click="eliminar(a)">Dar de baja</button>
           </td>
         </tr>
       </tbody>
@@ -39,30 +41,39 @@
 </template>
 
 <script>
-import { afiliadosApi } from '../services/api'
+import { afiliadosApi, mensajeDeError } from '../services/api'
 
 export default {
   name: 'AfiliadosList',
   data() {
     return {
-      afiliados: []
+      afiliados: [],
+      cargando: true,
+      error: null,
+      procesando: null
     }
   },
   async mounted() {
     try {
       const res = await afiliadosApi.getAll()
       this.afiliados = res.data
-    } catch {
-      alert('Error al procesar la solicitud')
+    } catch (e) {
+      this.error = mensajeDeError(e)
+    } finally {
+      this.cargando = false
     }
   },
   methods: {
-    async eliminar(id) {
+    async eliminar(afiliado) {
+      if (!confirm(`¿Dar de baja a ${afiliado.nombreCompleto}? Su historial de consultas se conserva.`)) return
+      this.procesando = afiliado.id
       try {
-        await afiliadosApi.delete(id)
-        this.afiliados = this.afiliados.filter(a => a.id !== id)
-      } catch {
-        alert('Error al procesar la solicitud')
+        await afiliadosApi.delete(afiliado.id)
+        this.afiliados = this.afiliados.filter(a => a.id !== afiliado.id)
+      } catch (e) {
+        alert(mensajeDeError(e))
+      } finally {
+        this.procesando = null
       }
     }
   }
