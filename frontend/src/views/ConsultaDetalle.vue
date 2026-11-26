@@ -12,73 +12,58 @@
       <div class="detail-row"><span class="label">Estado</span><span>{{ consulta.estado }}</span></div>
       <div class="detail-row"><span class="label">Motivo</span><span>{{ consulta.motivo }}</span></div>
 
-      <div style="margin-top: 24px">
-        <div class="form-group">
-          <label>Cambiar estado</label>
-          <select v-model="nuevoEstado">
-            <option v-for="e in estados" :key="e" :value="e">{{ e }}</option>
-          </select>
-        </div>
-        <button @click="cambiarEstado" style="margin-bottom: 16px">Actualizar estado</button>
+      <div v-if="esActiva(consulta)" style="display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap">
+        <button v-if="puedeConfirmar(consulta)" :disabled="procesando" @click="ejecutar('confirmar')">Confirmar</button>
+        <button :disabled="procesando" @click="ejecutar('registrarAtencion')">Registrar atención</button>
+        <button :disabled="procesando" @click="ejecutar('marcarInasistencia')">Marcar inasistencia</button>
+        <button class="btn-danger" :disabled="procesando" @click="cancelar">Cancelar consulta</button>
       </div>
-
-      <div style="display: flex; gap: 10px">
-        <button @click="registrarAtencion">Registrar atención</button>
-        <button class="btn-danger" @click="cancelar">Cancelar consulta</button>
-        <button @click="marcarInasistencia">Marcar inasistencia</button>
-      </div>
+      <p v-else class="estado-final">La consulta está en un estado final y no admite más acciones.</p>
     </div>
-    <p v-else>Cargando...</p>
+    <p v-else-if="error" class="error" style="margin-top: 20px">{{ error }}</p>
+    <p v-else style="margin-top: 20px">Cargando...</p>
   </div>
 </template>
 
 <script>
-import { consultasApi } from '../services/api'
+import { consultasApi, mensajeDeError } from '../services/api'
+import { esActiva, puedeConfirmar, formatFecha } from '../utils/consultas'
 
 export default {
   name: 'ConsultaDetalle',
   data() {
     return {
       consulta: null,
-      nuevoEstado: 'Pendiente',
-      estados: ['Pendiente', 'Confirmado', 'Cancelado', 'Atendido', 'Inasistencia']
+      error: null,
+      procesando: false
     }
   },
   async mounted() {
     try {
       const res = await consultasApi.getById(this.$route.params.id)
       this.consulta = res.data
-      this.nuevoEstado = this.consulta.estado
-    } catch {
-      alert('Error al procesar la solicitud')
+    } catch (e) {
+      this.error = mensajeDeError(e)
     }
   },
   methods: {
-    formatFecha(fecha) {
-      return new Date(fecha).toLocaleString('es-AR')
-    },
-    async cambiarEstado() {
+    esActiva,
+    puedeConfirmar,
+    formatFecha,
+    async ejecutar(accion) {
+      this.procesando = true
       try {
-        const res = await consultasApi.actualizarEstado(this.consulta.id, { estado: this.nuevoEstado })
+        const res = await consultasApi[accion](this.consulta.id)
         this.consulta = res.data
-      } catch {
-        alert('Error al procesar la solicitud')
-      }
-    },
-    async registrarAtencion() {
-      try {
-        const res = await consultasApi.registrarAtencion(this.consulta.id)
-        this.consulta = res.data
-        this.nuevoEstado = this.consulta.estado
-      } catch {
-        alert('Error al procesar la solicitud')
+      } catch (e) {
+        alert(mensajeDeError(e))
+      } finally {
+        this.procesando = false
       }
     },
     async cancelar() {
-      await consultasApi.cancelar(this.consulta.id)
-    },
-    async marcarInasistencia() {
-      await consultasApi.marcarInasistencia(this.consulta.id)
+      if (!confirm('¿Cancelar esta consulta?')) return
+      await this.ejecutar('cancelar')
     }
   }
 }
@@ -96,5 +81,10 @@ export default {
   font-weight: 600;
   color: #666;
   flex-shrink: 0;
+}
+.estado-final {
+  margin-top: 24px;
+  font-size: 13px;
+  color: #777;
 }
 </style>

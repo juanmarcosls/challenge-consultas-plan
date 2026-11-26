@@ -3,6 +3,10 @@ using ConsultasPlan.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Reloj inyectable: permite testear reglas que dependen de la fecha actual.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ConsultasPlan.Services.CupoNutricionService>();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=consultas.db"));
 

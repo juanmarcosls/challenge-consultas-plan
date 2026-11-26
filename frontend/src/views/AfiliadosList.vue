@@ -1,7 +1,9 @@
 <template>
   <div>
     <h2>Afiliados</h2>
-    <table v-if="afiliados.length">
+    <p v-if="cargando">Cargando...</p>
+    <p v-else-if="error" class="error">{{ error }}</p>
+    <table v-else-if="afiliados.length">
       <thead>
         <tr>
           <th>#</th>
@@ -10,7 +12,7 @@
           <th>Email</th>
           <th>Teléfono</th>
           <th>Plan</th>
-          <th>Consultas usadas</th>
+          <th>Nutrición {{ anio }}</th>
           <th>Bloqueado</th>
           <th>Acciones</th>
         </tr>
@@ -23,13 +25,16 @@
           <td>{{ a.email }}</td>
           <td>{{ a.telefono }}</td>
           <td>{{ a.plan }}</td>
-          <td>{{ a.consultasUsadas }}</td>
+          <td :title="'Consultas de nutrición presencial que consumen cupo en ' + anio">
+            <template v-if="cupos[a.id]">{{ cupos[a.id].usadas }} / {{ cupos[a.id].cupoAnual }}</template>
+            <template v-else>—</template>
+          </td>
           <td>
             <span v-if="a.bloqueado" style="color: #d32f2f; font-weight: 600">Sí</span>
             <span v-else style="color: #388e3c">No</span>
           </td>
           <td>
-            <button class="btn-danger" @click="eliminar(a.id)">Eliminar</button>
+            <button class="btn-danger" :disabled="procesando === a.id" @click="eliminar(a)">Dar de baja</button>
           </td>
         </tr>
       </tbody>
@@ -39,30 +44,50 @@
 </template>
 
 <script>
-import { afiliadosApi } from '../services/api'
+import { afiliadosApi, mensajeDeError } from '../services/api'
 
 export default {
   name: 'AfiliadosList',
   data() {
     return {
-      afiliados: []
+      afiliados: [],
+      cupos: {},
+      anio: new Date().getFullYear(),
+      cargando: true,
+      error: null,
+      procesando: null
     }
   },
   async mounted() {
     try {
       const res = await afiliadosApi.getAll()
       this.afiliados = res.data
-    } catch {
-      alert('Error al procesar la solicitud')
+      this.cargarCupos()
+    } catch (e) {
+      this.error = mensajeDeError(e)
+    } finally {
+      this.cargando = false
     }
   },
   methods: {
-    async eliminar(id) {
+    async cargarCupos() {
       try {
-        await afiliadosApi.delete(id)
-        this.afiliados = this.afiliados.filter(a => a.id !== id)
+        const res = await afiliadosApi.getCuposNutricion(this.anio)
+        this.cupos = Object.fromEntries(res.data.map(c => [c.afiliadoId, c]))
       } catch {
-        alert('Error al procesar la solicitud')
+        // El listado sigue siendo útil sin el cupo; la columna muestra "—".
+      }
+    },
+    async eliminar(afiliado) {
+      if (!confirm(`¿Dar de baja a ${afiliado.nombreCompleto}? Su historial de consultas se conserva.`)) return
+      this.procesando = afiliado.id
+      try {
+        await afiliadosApi.delete(afiliado.id)
+        this.afiliados = this.afiliados.filter(a => a.id !== afiliado.id)
+      } catch (e) {
+        alert(mensajeDeError(e))
+      } finally {
+        this.procesando = null
       }
     }
   }
