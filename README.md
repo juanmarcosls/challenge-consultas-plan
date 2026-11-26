@@ -24,6 +24,13 @@ La base de datos SQLite (`consultas.db`) se crea automáticamente en la primera 
 
 > Si ya tenías un `consultas.db` de una versión anterior, borralo antes de correr: la base se crea con `EnsureCreated`, que no actualiza el esquema de una base existente.
 
+### Política de cupo de nutrición
+
+El plan incluye 6 consultas de nutrición presencial por año calendario, con un máximo de 1 por mes. Se valida al agendar (`POST /consultas`). Para consultar el cupo:
+
+- `GET /afiliados/{id}/cupo-nutricion?anio=2026`: cupo de un afiliado.
+- `GET /afiliados/cupo-nutricion?anio=2026`: cupo de todos los afiliados activos.
+
 ### Tests
 
 ```bash

@@ -4,6 +4,7 @@ using ConsultasPlan.Data;
 using ConsultasPlan.Domain;
 using ConsultasPlan.Dtos;
 using ConsultasPlan.Models;
+using ConsultasPlan.Services;
 
 namespace ConsultasPlan.Controllers;
 
@@ -13,11 +14,13 @@ public class ConsultasController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly TimeProvider _time;
+    private readonly CupoNutricionService _cupoNutricion;
 
-    public ConsultasController(AppDbContext context, TimeProvider time)
+    public ConsultasController(AppDbContext context, TimeProvider time, CupoNutricionService cupoNutricion)
     {
         _context = context;
         _time = time;
+        _cupoNutricion = cupoNutricion;
     }
 
     private DateTime Ahora => _time.GetLocalNow().DateTime;
@@ -55,8 +58,8 @@ public class ConsultasController : ControllerBase
         if (afiliado.Bloqueado)
             return BadRequest(new { mensaje = "El afiliado se encuentra bloqueado para agendar consultas." });
 
-        var profesionalExiste = await _context.Profesionales.AnyAsync(p => p.Id == request.ProfesionalId);
-        if (!profesionalExiste)
+        var profesional = await _context.Profesionales.FindAsync(request.ProfesionalId);
+        if (profesional == null)
             return NotFound(new { mensaje = "Profesional no encontrado." });
 
         if (fechaHora <= Ahora)
@@ -76,12 +79,17 @@ public class ConsultasController : ControllerBase
         if (conflictoAfiliado)
             return BadRequest(new { mensaje = "El afiliado ya tiene otra consulta en ese horario." });
 
+        var modalidad = request.Modalidad!.Value;
+        var errorCupo = await _cupoNutricion.ValidarNuevaConsultaAsync(afiliado.Id, profesional, modalidad, fechaHora);
+        if (errorCupo != null)
+            return BadRequest(new { mensaje = errorCupo });
+
         var consulta = new Consulta
         {
             AfiliadoId = request.AfiliadoId,
             ProfesionalId = request.ProfesionalId,
             FechaHora = fechaHora,
-            Modalidad = request.Modalidad!.Value,
+            Modalidad = modalidad,
             Motivo = request.Motivo,
             FechaCreacion = Ahora,
             Estado = EstadoConsulta.Pendiente
